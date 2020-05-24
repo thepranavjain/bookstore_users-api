@@ -2,11 +2,31 @@ package services
 
 import (
 	"github.com/thepranavjain/bookstore_users-api/domain/users"
+	"github.com/thepranavjain/bookstore_users-api/utils/crypto_utils"
 	"github.com/thepranavjain/bookstore_users-api/utils/date_utils"
 	"github.com/thepranavjain/bookstore_users-api/utils/errors"
 )
 
-func GetUser(userId int64) (*users.User, *errors.RestErr) {
+/**
+ * The struct is so that the methods are not static and can be mocked while testing
+ */
+type usersService struct {
+
+}
+
+type userServiceInterface interface {
+	GetUser(int64) (*users.User, *errors.RestErr)
+	CreateUser(users.User) (*users.User, *errors.RestErr)
+	UpdateUser(users.User, bool) (*users.User, *errors.RestErr)
+	DeleteUser(int64) *errors.RestErr
+	SearchUser(string) (users.Users, *errors.RestErr)
+}
+
+var (
+	UsersService userServiceInterface = &usersService{}
+)
+
+func (s *usersService) GetUser(userId int64) (*users.User, *errors.RestErr) {
 	if userId <= 0 {
 		return nil, errors.NewBadRequestError("invalid user Id")
 	}
@@ -17,21 +37,22 @@ func GetUser(userId int64) (*users.User, *errors.RestErr) {
 	return &result, nil
 }
 
-func CreateUser(user users.User) (*users.User, *errors.RestErr) {
+func (s *usersService) CreateUser(user users.User) (*users.User, *errors.RestErr) {
 	user.Prepare()
 	if err := user.Validate(); err != nil {
 		return nil, err
 	}
 	user.DateCreated = date_utils.GetNowDbFormat()
 	user.Status = users.StatusActive
+	user.Password = crypto_utils.GetSHA256(user.Password)
 	if err := user.Save(); err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
 
-func UpdateUser(user users.User, isPartial bool) (*users.User, *errors.RestErr) {
-	current, err := GetUser(user.Id)
+func (s *usersService) UpdateUser(user users.User, isPartial bool) (*users.User, *errors.RestErr) {
+	current, err := s.GetUser(user.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +83,12 @@ func UpdateUser(user users.User, isPartial bool) (*users.User, *errors.RestErr) 
 	return current, nil
 }
 
-func DeleteUser(userId int64) *errors.RestErr {
+func (s *usersService) DeleteUser(userId int64) *errors.RestErr {
 	user := users.User{Id: userId}
 	return user.Delete()
 }
 
-func Search(status string) ([]users.User, *errors.RestErr) {
+func (s *usersService) SearchUser(status string) (users.Users, *errors.RestErr) {
 	dao := &users.User{}
 	return dao.FindByStatus(status)
 }

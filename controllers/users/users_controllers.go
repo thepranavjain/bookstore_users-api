@@ -10,6 +10,10 @@ import (
 	"github.com/thepranavjain/bookstore_users-api/utils/errors"
 )
 
+var (
+	usersService = services.UsersService
+)
+
 func getUserId(userId string) (int64, *errors.RestErr) {
 	userIdInt, userErr := strconv.ParseInt(userId, 10, 64)
 	if userErr != nil {
@@ -25,12 +29,12 @@ func Create(c *gin.Context) {
 		c.JSON(restErr.Status, restErr)
 		return
 	}
-	result, saveErr := services.CreateUser(user)
+	result, saveErr := usersService.CreateUser(user)
 	if saveErr != nil {
 		c.JSON(saveErr.Status, saveErr)
 		return
 	}
-	c.JSON(http.StatusCreated, result)
+	c.JSON(http.StatusCreated, result.Marshall(c.GetHeader("X-Public") == "true"))
 }
 
 func Get(c *gin.Context) {
@@ -40,12 +44,12 @@ func Get(c *gin.Context) {
 		return
 	}
 
-	user, getErr := services.GetUser(userId)
+	user, getErr := usersService.GetUser(userId)
 	if getErr != nil {
 		c.JSON(getErr.Status, getErr)
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, user.Marshall(c.GetHeader("X-Public") == "true"))
 }
 
 func Update(c *gin.Context) {
@@ -63,12 +67,12 @@ func Update(c *gin.Context) {
 	}
 	isPartial := c.Request.Method == "PATCH"
 	user.Id = userId
-	result, updateErr := services.UpdateUser(user, isPartial)
+	result, updateErr := usersService.UpdateUser(user, isPartial)
 	if updateErr != nil {
 		c.JSON(updateErr.Status, updateErr)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, result.Marshall(c.GetHeader("X-Public") == "true"))
 }
 
 func Delete(c *gin.Context) {
@@ -78,7 +82,7 @@ func Delete(c *gin.Context) {
 		return
 	}
 
-	deleteErr := services.DeleteUser(userId)
+	deleteErr := usersService.DeleteUser(userId)
 	if deleteErr != nil {
 		c.JSON(deleteErr.Status, deleteErr)
 		return
@@ -88,10 +92,10 @@ func Delete(c *gin.Context) {
 
 func Search(c *gin.Context) {
 	status := c.Query("status")
-	users, err := services.Search(status)
+	result, err := usersService.SearchUser(status)
 	if err != nil {
 		c.JSON(err.Status, err)
 		return
 	}
-	c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, result.Marshall(c.GetHeader("X-Public") == "true"))
 }
